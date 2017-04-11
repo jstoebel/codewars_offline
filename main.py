@@ -1,4 +1,7 @@
+import aiohttp
+import asyncio
 import argparse
+import async_timeout
 import json
 import os
 import random
@@ -80,13 +83,24 @@ class Client:
 
         rel_file = os.path.join(self.dest, '{}.md'.format(self.slug))
 
-        print(rel_file)
         with(open(rel_file, 'w+')) as writer:
             template = Template(open('template.md.j2', 'r').read())
             output = template.render(**params)
             writer.write(output)
 
         print('-> {}'.format(rel_file))
+
+async def main(loop):
+    c = Client(ARGS)
+    if ARGS.n is None:
+        n = 1
+    else:
+        n = ARGS.n
+
+    async with aiohttp.ClientSession(loop=loop) as session:
+        for _ in range(n):
+            c.make_kata()
+
 
 def main():
     c = Client(ARGS)
@@ -99,4 +113,7 @@ if __name__ == '__main__':
     PARSER.add_argument('--dest', help='The destination of the resulting markdown file')
     PARSER.add_argument('--n', type=int, help='Number of katas to grab')
     ARGS = PARSER.parse_args()
-    main()
+
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(main(loop))
+    # main()
