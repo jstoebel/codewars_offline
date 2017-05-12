@@ -7,15 +7,29 @@ from shutil import copyfile
 from jinja2 import Template
 import requests
 
+import client
+
 def new_project(args):
     """
     create a new project directory based on arguments
     args: parsed args
     """
 
-    os.makedirs(args['dir'])
-    copyfile('templates/config.example.json', os.path.join(args['dir'], 'config.json'))
+    if args['dir']:
+        project_dir = os.path.join(os.getcwd(), args['dir'])
+    else:
+        project_dir = os.path.join(os.getcwd(), 'katas')
 
+    os.makedirs(project_dir)
+    copyfile('templates/config.example.json', os.path.join(project_dir, 'config.json'))
+
+def fetch(args):
+    """
+    fetch katas based on args
+    """
+
+    c = client.Client(args)
+    c.make_kata()
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Grab Codewars kata for offline use')
@@ -27,8 +41,7 @@ if __name__ == '__main__':
 
     fetch_parser = subparsers.add_parser('fetch', help='fetch katas')
     fetch_parser.set_defaults(which='fetch')
-    fetch_parser.add_argument('--language', help='The language to grab from')
-    fetch_parser.add_argument('--dest', help='The destination of the resulting markdown file')
+    fetch_parser.add_argument('--lang', help='The language to grab from')
     fetch_parser.add_argument('--n', type=int, help='Number of katas to grab')
 
     args = vars(parser.parse_args())
@@ -38,3 +51,4 @@ if __name__ == '__main__':
         new_project(args)
     elif args['which'] == 'fetch':
         print('fetch katas')
+        fetch(args)
