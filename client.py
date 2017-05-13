@@ -1,3 +1,4 @@
+import copy
 import json
 import os
 import random
@@ -37,6 +38,9 @@ class Client:
             except (KeyError, IndexError) as e:
                 raise e("No language given and none specified in config.json")
 
+        language_mapping = {"python": "py", "ruby": "rb", "javascript": "js"}
+        self.language_ext = language_mapping[self.language]
+
         print('Finding a kata for {}...'.format(self.language))
 
         self._get_slug()
@@ -44,9 +48,14 @@ class Client:
                                                                     slug=self.slug,
                                                                     lang=self.language
                                                                 )
-        # os.mkdir(self.slug) UNCOMMENT ME!
-        self._scrape_kata()
-        # write files
+        os.mkdir(self.slug)
+        self.kata_dir = os.path.join(os.getcwd(), self.slug)
+
+        self.driver.get(self.url)
+
+        self._scrape_description()
+        self._scrape_code()
+        self._write_files()
 
     def _get_slug(self):
         """
@@ -58,24 +67,84 @@ class Client:
         headers = {'Authorization': self.config['api_key']}
         resp = requests.post(url, headers=headers)
         resp_json = json.loads(resp.text)
+
+        self.name = resp_json['name']
+        self.username = resp_json['author']
         self.slug = resp_json['slug']
 
-    def _scrape_kata(self):
+    def _scrape_description(self):
         """
-        scrape the kata for description, starter code and tests
-
-        description, starter code and tests are written to disk as files
+        scrape the kata description
+        description is saved to object
         """
-        # self.url = "http://www.codewars.com/kata/valid-braces/train/ruby"
-        # print(self.url)
-        self.driver.get(self.url)
 
-        # resp = requests.get(self.url)
-        soup = BeautifulSoup(self.driver.page_source, 'html.parser')
-        descrip = soup.select('#description')[0]
+        while True:
+            soup = BeautifulSoup(self.driver.page_source, 'html.parser')
+            try:
+                descrip = soup.select('#description')[0]
+                break
+            except IndexError:
+                # data wasn't ready. Just try again.
+                continue
 
-        for paragraph in descrip.findAll('p'):
-            print(str(paragraph))
-            print(html2text.html2text(str(paragraph)))
+        self.description = ''.join(
+            [
+                html2text.html2text(
+                    str(paragraph)
+                ) for paragraph in descrip.findAll('p')
+            ]
+        )
 
-        # print(soup.select('#description')[0])
+    def _scrape_code(self):
+        """
+        scrape the starter code and tests
+        values are saved to object
+        """
+
+        for _id in ['code', 'fixture']:
+
+            code_box = self.driver.find_elements_by_css_selector('#{} .CodeMirror'.format(_id))[0]
+            code = self.driver.execute_script('return arguments[0].CodeMirror.getValue()', code_box)
+            setattr(self, _id, code)
+
+    def _write_files(self):
+        """
+        write files to disk based on scrapped data
+        """
+
+        # write the description file
+        with(open('{slug}/description.md'.format(slug=self.slug), 'w+')) as descrip_writer:
+            # print(os.path.dirname(os.path.realpath(__file__)))
+
+            template_loc = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'templates')
+
+            desrip_template = Template(
+                open(os.path.join(template_loc, 'description.md.j2'), 'w+').read()
+            )
+            descrip_params = {
+                'name': self.name,
+                'username': self.username,
+                'url': self.url,
+                'description': self.description
+            }
+            descrip_output = desrip_template.render(**descrip_params)
+            print(descrip_output)
+            descrip_writer.write(descrip_output)
+
+        # write code and tests
+        file_mappings = {'code': 'main', 'fixture': 'tests'}
+        for k, v in file_mappings.items():
+
+            with open('{slug}/{v}.{ext}'.format(slug=self.slug, v=v, ext=self.language_ext), 'w+') as code_writer:
+
+                code_template = Template(
+                    open(os.path.join(template_loc, '{lang}.j2'.format(lang=self.language)),'r').read()
+                )
+
+                code_params = {
+                    'msg': 'This has been commented out to protect from malicious code.',
+                    'code': getattr(self, k)
+                }
+                code_output = code_template.render(**code_params)
+                print(code_output)
+                code_writer.write(code_output)
