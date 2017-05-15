@@ -2,11 +2,16 @@ import copy
 import json
 import os
 import random
+import re
+import subprocess
 
 from bs4 import BeautifulSoup
 import html2text
 from jinja2 import Template
 from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 import requests
 
 class Client:
@@ -22,6 +27,7 @@ class Client:
 
         self.args = args
         self.config = json.load(open('config.json', 'r'))
+        self.template_loc = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'templates')
 
     def make_kata(self):
         """
@@ -31,7 +37,7 @@ class Client:
         # set language to pull
 
         try:
-            self.language = self.args['language']
+            self.language = self.args['lang']
         except KeyError:
             try:
                 self.language = random.choice(self.config['languages'])
@@ -52,10 +58,24 @@ class Client:
         self.kata_dir = os.path.join(os.getcwd(), self.slug)
 
         self.driver.get(self.url)
+        try:
+            WebDriverWait(self.driver, 10).until_not(
+                EC.text_to_be_present_in_element((By.ID, 'description'), 'Loading description...')
+            )
 
-        self._scrape_description()
-        self._scrape_code()
-        self._write_files()
+            # OTHER WAITS GO HERE...
+            # I don't know how to wait until the code and tests have been fetched.
+            # instead I will just initiate a while loop that breaks when a value is found
+            # both of these boxes MUST have a value
+
+            self._scrape_description()
+            self._scrape_code()
+            self._write_files()
+            # if self.language == 'javascript':
+            #     self._node_dependencies()
+
+        finally:
+            self.driver.quit()
 
     def _get_slug(self):
         """
@@ -69,7 +89,6 @@ class Client:
         resp_json = json.loads(resp.text)
 
         self.name = resp_json['name']
-        self.username = resp_json['author']
         self.slug = resp_json['slug']
 
     def _scrape_description(self):
@@ -77,15 +96,9 @@ class Client:
         scrape the kata description
         description is saved to object
         """
-
-        while True:
-            soup = BeautifulSoup(self.driver.page_source, 'html.parser')
-            try:
-                descrip = soup.select('#description')[0]
-                break
-            except IndexError:
-                # data wasn't ready. Just try again.
-                continue
+        print('scraping description', end='')
+        soup = BeautifulSoup(self.driver.page_source, 'html.parser')
+        descrip = soup.select('#description')[0]
 
         self.description = ''.join(
             [
@@ -94,6 +107,7 @@ class Client:
                 ) for paragraph in descrip.findAll('p')
             ]
         )
+        print(' -> done')
 
     def _scrape_code(self):
         """
@@ -102,49 +116,79 @@ class Client:
         """
 
         for _id in ['code', 'fixture']:
-
-            code_box = self.driver.find_elements_by_css_selector('#{} .CodeMirror'.format(_id))[0]
-            code = self.driver.execute_script('return arguments[0].CodeMirror.getValue()', code_box)
-            setattr(self, _id, code)
+            while True:
+                print('waiting for {}'.format(_id), end='')
+                code_box = self.driver.find_elements_by_css_selector('#{} .CodeMirror'.format(_id))[0]
+                code = self.driver.execute_script('return arguments[0].CodeMirror.getValue()', code_box)
+                if code: # move to next element if something was found, otherwise try again.
+                    print(' -> found')
+                    setattr(self, _id, code)
+                    break
 
     def _write_files(self):
         """
-        write files to disk based on scrapped data
+        write files to disk based on scraped data
         """
 
-        # write the description file
-        with(open('{slug}/description.md'.format(slug=self.slug), 'w+')) as descrip_writer:
-            # print(os.path.dirname(os.path.realpath(__file__)))
+        self._write_description()
+        self._write_code()
 
-            template_loc = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'templates')
+    def _write_description(self):
+        """
+        write the description file
+        """
+        with(open('{slug}/description.md'.format(slug=self.slug), 'w+')) as writer:
 
-            desrip_template = Template(
-                open(os.path.join(template_loc, 'description.md.j2'), 'w+').read()
+            template = Template(
+                open(os.path.join(self.template_loc, 'description.md.j2'), 'r').read()
             )
-            descrip_params = {
+            params = {
                 'name': self.name,
-                'username': self.username,
                 'url': self.url,
                 'description': self.description
             }
-            descrip_output = desrip_template.render(**descrip_params)
-            print(descrip_output)
-            descrip_writer.write(descrip_output)
+            output = template.render(**params)
+            writer.write(output)
 
-        # write code and tests
+    def _write_code(self):
+        """
+        write code and tests
+        """
+
         file_mappings = {'code': 'main', 'fixture': 'tests'}
         for k, v in file_mappings.items():
 
-            with open('{slug}/{v}.{ext}'.format(slug=self.slug, v=v, ext=self.language_ext), 'w+') as code_writer:
+            with open('{slug}/{v}.{ext}'.format(slug=self.slug, v=v, ext=self.language_ext), 'w+') as writer:
 
-                code_template = Template(
-                    open(os.path.join(template_loc, '{lang}.j2'.format(lang=self.language)),'r').read()
+                template = Template(
+                    open(os.path.join(self.template_loc, k, '{lang}.j2'.format(lang=self.language)),'r').read()
                 )
 
-                code_params = {
-                    'msg': 'This has been commented out to protect from malicious code.',
-                    'code': getattr(self, k)
-                }
-                code_output = code_template.render(**code_params)
-                print(code_output)
-                code_writer.write(code_output)
+                # special exception for javascript When the function is
+                # scraped we then need to identify its name so we can
+                # reference it in the tests
+
+                if k == 'fixture' and self.language == 'javascript':
+                    p = re.compile('function\s*(.*?)\(')
+                    m = p.match(self.code)
+                    func_name = m.group(1)
+                    output = template.render({
+                        'code': getattr(self, k),
+                        'func_name': func_name
+                    })
+                else:
+                    output = template.render({'code': getattr(self, k)})
+                writer.write(output)
+
+    def _node_dependencies(self):
+        """
+        grab node dependencies for running tests
+        """
+
+        os.chdir(self.slug) # cd into kata dir
+
+        subprocess.check_call('npm init -f', shell=True)
+
+        pkgs = 'bluebird chai child_process lodash underscore'
+        subprocess.check_call('npm install --save {pkgs}'.format(pkgs=pkgs),
+                                shell=True)

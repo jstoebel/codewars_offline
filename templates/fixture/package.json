@@ -1,0 +1,18 @@
+{
+  "name": "{{kata}}",
+  "version": "1.0.0",
+  "description": "",
+  "main": "main.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "bluebird": "^3.5.0",
+    "chai": "^3.5.0",
+    "child_process": "^1.0.2",
+    "lodash": "^4.17.4",
+    "underscore": "^1.8.3"
+  }
+}
