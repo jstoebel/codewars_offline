@@ -1,5 +1,4 @@
 secrets.json
 katas
 /__pycache__
-/test_utils/javascript/node_modules/
-/test_utils/javascript/package.json
+.DS_Store

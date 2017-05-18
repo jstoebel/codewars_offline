@@ -1,0 +1,3 @@
+include kata_scrape/templates/**/*.*
+include kata_scrape/templates/*.*
+include kata_scrape/test_utils/**/*.*
