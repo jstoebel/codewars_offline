@@ -3,6 +3,7 @@ import json
 import os
 import random
 import re
+import time
 
 from bs4 import BeautifulSoup
 import html2text
@@ -12,6 +13,9 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import requests
+
+class KataExistsError(Exception):
+    pass
 
 class Client:
 
@@ -55,7 +59,10 @@ class Client:
                                                                     slug=self.slug,
                                                                     lang=self.language
                                                                 )
-        os.mkdir(self.slug)
+        try:
+            os.mkdir(self.slug)
+        except FileExistsError:
+            raise KataExistsError("You've already scraped the next {} kata.".format(self.language))
         print(' -> {}'.format(self.slug))
         self.kata_dir = os.path.join(os.getcwd(), self.slug)
 
@@ -85,9 +92,10 @@ class Client:
         determines a random kata slug
         """
 
-        url = "https://www.codewars.com/api/v1/code-challenges/{}/train?strategy=random".format(self.language)
+        url = "https://www.codewars.com/api/v1/code-challenges/{}/train".format(self.language)
+        data = {'strategy': 'random'}
         headers = {'Authorization': self.config['api_key']}
-        resp = requests.post(url, headers=headers)
+        resp = requests.post(url, data=data, headers=headers)
         resp_json = json.loads(resp.text)
 
         self.name = resp_json['name']
@@ -99,8 +107,21 @@ class Client:
         description is saved to object
         """
         print('scraping description', end='')
-        soup = BeautifulSoup(self.driver.page_source, 'html.parser')
-        descrip = soup.select('#description')[0]
+        t0 = time.time()
+
+        while True:
+            try:
+                soup = BeautifulSoup(self.driver.page_source, 'html.parser')
+                descrip = soup.select('#description')[0]
+                break
+            except IndexError:
+                if time.time() - t0 < 10:
+                    time.sleep(.5)
+                    continue
+                else:
+                    # We waited for 10 seconds and we can't find the description
+                    # in the DOM. timeout!
+                    raise RuntimeError('Kata could not be scraped. Please try again later')
 
         self.description = ''.join(
             [

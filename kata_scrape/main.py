@@ -8,7 +8,7 @@ import subprocess
 from jinja2 import Template
 import requests
 
-from .client import Client
+from .client import Client, KataExistsError
 
 def new_project(args):
     """
@@ -23,25 +23,22 @@ def new_project(args):
     else:
         project_dir = os.path.join(os.getcwd(), 'katas')
 
-    print('creating project directory...', end='')
+    print('creating project directory.')
     os.makedirs(project_dir)
-    print(' -> done.')
 
-    print('creating config.json...', end='')
+    print('creating config.json...')
     copyfile(
         os.path.join(os.path.dirname(os.path.realpath(__file__)), 'templates/config.example.json'),
         os.path.join(project_dir, 'config.json')
     )
-    print(' -> done.')
 
-    print('copying test utils', end='')
+    print('copying test utils...')
     copytree(
         os.path.join(os.path.dirname(os.path.realpath(__file__)), 'test_utils'),
         os.path.join(project_dir, 'test_utils')
     )
-    print(' -> done.')
 
-    print('installing node testing dependencies...', end='')
+    print('installing node testing dependencies...')
     os.chdir(project_dir)
     pkgs = 'bluebird chai child_process lodash underscore'
 
@@ -49,22 +46,13 @@ def new_project(args):
                             shell=True)
 
     os.chdir(starting_dir)
-    print(' -> done.')
 
 def fetch(args):
     """
     fetch katas based on args
     """
-
-    kata_count = 0
-    while kata_count < args['n']:
-        try:
-            c = Client(args)
-            c.make_kata()
-            kata_count += 1
-        except FileExistsError:
-            # this kata already exists. try again
-            pass
+    c = Client(args)
+    c.make_kata()
 
 def main():
     if args['which'] == 'init':
@@ -82,7 +70,7 @@ init_parser.add_argument('--dir', help='the path of the project directory, relat
 fetch_parser = subparsers.add_parser('fetch', help='fetch katas')
 fetch_parser.set_defaults(which='fetch')
 fetch_parser.add_argument('--lang', help='The language to grab from')
-fetch_parser.add_argument('--n', type=int, help='Number of katas to grab')\
+fetch_parser.add_argument('--n', type=int, help='Number of katas to grab')
 fetch_parser.set_defaults(n=1)
 
 args = vars(parser.parse_args())
