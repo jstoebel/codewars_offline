@@ -30,7 +30,8 @@ class Client:
 
         self.args = args
         try:
-            self.config = json.load(open('config.json', 'r'))
+            with(open('config.json', 'r')) as json_reader:
+                self.config = json.load(json_reader)
         except FileNotFoundError:
             raise FileNotFoundError("config file not found. Please run `kata-scrape init` first.")
         self.template_loc = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'templates')
@@ -38,27 +39,20 @@ class Client:
     def make_kata(self):
         """
         create a kata based on args
+
+        post:
+            - description is scraped
+            - code is scraped
+            - tests are scraped
         """
 
-        # set language to pull
-        self.language = self.args['lang']
-        if self.language is None:
-            try:
-                self.language = random.choice(self.config['languages'])
-            except (KeyError, IndexError) as e:
-                raise e("No language given and none specified in config.json")
-
-        language_mapping = {"python": "py", "ruby": "rb", "javascript": "js"}
-        self.language_ext = language_mapping[self.language]
-
-
+        self._pick_lang()
         print('Finding a kata for {}...'.format(self.language), end='')
 
         self._get_slug()
         self.url = 'http://www.codewars.com/kata/{slug}/train/{lang}'.format(
-                                                                    slug=self.slug,
-                                                                    lang=self.language
-                                                                )
+            slug=self.slug, lang=self.language
+        )
         try:
             os.mkdir(self.slug)
         except FileExistsError:
@@ -80,26 +74,48 @@ class Client:
             self._scrape_description()
             self._scrape_code()
             self._write_files()
-            # if self.language == 'javascript':
-            #     self._node_dependencies()
 
         finally:
             self.driver.quit()
 
+    def _pick_lang(self):
+        """
+        pick the language to scrape from
+        """
+
+        self.language = self.args['lang']
+        if self.language is None:
+            try:
+                self.language = random.choice(self.config['languages'])
+            except (KeyError, IndexError) as e:
+                raise e("No language given and none specified in config.json")
+
+        language_mapping = {"python": "py", "ruby": "rb", "javascript": "js"}
+        self.language_ext = language_mapping[self.language]
+
+    # ~~~ determine the next kata ~~~
     def _get_slug(self):
         """
         language(str): langauge to pull from
         determines a random kata slug
         """
 
+        resp_json = self._train_next()
+        self.name = resp_json['name']
+        self.slug = resp_json['slug']
+
+    def _train_next(self):
+        """
+        post request to train in the next challenge
+        """
+
         url = "https://www.codewars.com/api/v1/code-challenges/{}/train".format(self.language)
         data = {'strategy': 'random'}
         headers = {'Authorization': self.config['api_key']}
         resp = requests.post(url, data=data, headers=headers)
-        resp_json = json.loads(resp.text)
+        return json.loads(resp.text)
 
-        self.name = resp_json['name']
-        self.slug = resp_json['slug']
+    # ~~~ scrape content and write to file ~~~
 
     def _scrape_description(self):
         """
@@ -132,6 +148,14 @@ class Client:
         )
         print(' -> done')
 
+    def _grab_codemirror(self, _id):
+        """
+        grab content from the codemirror div
+        _id: the id of the div to grab from
+        """
+        code_box = self.driver.find_elements_by_css_selector('#{} .CodeMirror'.format(_id))[0]
+        return self.driver.execute_script('return arguments[0].CodeMirror.getValue()', code_box)
+
     def _scrape_code(self):
         """
         scrape the starter code and tests
@@ -141,8 +165,7 @@ class Client:
         for _id in ['code', 'fixture']:
             while True:
                 print('waiting for {}'.format(_id), end='')
-                code_box = self.driver.find_elements_by_css_selector('#{} .CodeMirror'.format(_id))[0]
-                code = self.driver.execute_script('return arguments[0].CodeMirror.getValue()', code_box)
+                code = self._grab_codemirror(_id)
                 if code: # move to next element if something was found, otherwise try again.
                     print(' -> found')
                     setattr(self, _id, code)
@@ -210,16 +233,3 @@ class Client:
                 else:
                     output = template.render({'code': getattr(self, k)})
                 writer.write(output)
-
-    def _node_dependencies(self):
-        """
-        grab node dependencies for running tests
-        """
-
-        os.chdir(self.slug) # cd into kata dir
-
-        subprocess.check_call('npm init -f', shell=True)
-
-        pkgs = 'bluebird chai child_process lodash underscore'
-        subprocess.check_call('npm install --save {pkgs}'.format(pkgs=pkgs),
-                                shell=True)

@@ -6,4 +6,10 @@ at init
 
 # user setup
 
+You need to have the following installed
+
  - `brew install phantomjs`
+ - python 3
+ - ruby 2
+ - node
+ - npm
