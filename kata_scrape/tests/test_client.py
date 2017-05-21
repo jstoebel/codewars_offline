@@ -122,10 +122,62 @@ class TestClient(unittest.TestCase):
         self.assertEqual(c._grab_codemirror.call_count, 2)
 
     def test__write_description(self):
-        pass
+        c = client.Client({})
+        c.slug = 'some-kata'
+        c.name = 'jacob'
+        c.url = 'www.someurl.com'
+        c.description = 'kata description'
+
+        expected_file = '# {name}\n[{url}]({url})\n\n{description}'.format(
+            name=c.name,
+            url=c.url,
+            description=c.description
+        )
+        os.makedirs(c.slug)
+        c._write_description()
+
+        with(open('./{}/description.md'.format(c.slug), 'r')) as reader:
+            self.assertEqual(expected_file, reader.read())
 
     def test__write_code(self):
-        pass
+        c = client.Client({})
+        c.slug = 'some-kata'
+        c.code = 'some code'
+        c.fixture = 'a fixture'
+        c.language = 'python'
+        c.language_ext = 'py'
+
+        os.makedirs(c.slug)
+
+        expected_code_file = '"""\nThis has been commented out to protect from malicious code\n\n{code}\n"""\n'.format(
+    code=c.code
+)
+
+        print('')
+        print(expected_code_file)
+
+        expected_test_file = '''import sys
+sys.path.append('../test_utils/python')
+import test_utils as test
+Test = test # this module is sometimes referenced with a capital T
+from main import *
+
+{code}
+
+'''.format(code=c.code)
+
+        c._write_code()
+
+        with(open('./{}/main.py'.format(c.slug), 'r')) as reader:
+            # print(reader.read())
+            contents = reader.read()
+            print(contents)
+            self.assertMultiLineEqual(expected_code_file, contents)
+
+
+        with(open('./{}/tests.py'.format(c.slug), 'r')) as reader:
+            self.assertMultiLineEqual(expected_test_file, reader.read())
+
 
     def test__write_code_js(self):
         pass

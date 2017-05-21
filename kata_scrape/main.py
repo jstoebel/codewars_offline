@@ -8,7 +8,7 @@ import subprocess
 from jinja2 import Template
 import requests
 
-from .client import Client, KataExistsError
+from .client import Client
 
 def new_project(args):
     """

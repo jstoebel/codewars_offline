@@ -3,6 +3,7 @@ import json
 import os
 import random
 import re
+import sys
 import time
 
 from bs4 import BeautifulSoup
@@ -13,6 +14,8 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import requests
+
+from settings import TEMPLATES
 
 class KataExistsError(Exception):
     pass
@@ -34,7 +37,6 @@ class Client:
                 self.config = json.load(json_reader)
         except FileNotFoundError:
             raise FileNotFoundError("config file not found. Please run `kata-scrape init` first.")
-        self.template_loc = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'templates')
 
     def make_kata(self):
         """
@@ -185,9 +187,11 @@ class Client:
         """
         with(open('{slug}/description.md'.format(slug=self.slug), 'w+')) as writer:
 
+            descrip_template = open(os.path.join(TEMPLATES, 'description.md.j2'), 'r')
             template = Template(
-                open(os.path.join(self.template_loc, 'description.md.j2'), 'r').read()
+                descrip_template.read()
             )
+            descrip_template.close()
             params = {
                 'name': self.name,
                 'url': self.url,
@@ -207,7 +211,7 @@ class Client:
             with open('{slug}/{v}.{ext}'.format(slug=self.slug, v=v, ext=self.language_ext), 'w+') as writer:
 
                 template = Template(
-                    open(os.path.join(self.template_loc, k, '{lang}.j2'.format(lang=self.language)),'r').read()
+                    open(os.path.join(TEMPLATES, k, '{lang}.j2'.format(lang=self.language)),'r').read()
                 )
 
                 # special exception for javascript When the function is
@@ -221,7 +225,7 @@ class Client:
                     try:
                         func_name = m.group(1)
                     except AttributeError:
-                        # maybe the format is like this: var recoverSecret = function(triplets)
+                        # maybe the format is like this: var someFunc = function(args)
                         p2 = re.compile('(\w+)\s*=\s*function')
                         m2 = p.match(self.code)
                         func_name = m.group(1)
