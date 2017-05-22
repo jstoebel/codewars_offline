@@ -2,6 +2,7 @@ secrets.json
 katas
 .DS_Store
 *.pyc
+kata_scrape/__pycache__/__init__.cpython-36.pyc
 
 Skip to content
 This repository
