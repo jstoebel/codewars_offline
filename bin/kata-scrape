@@ -1,0 +1,4 @@
+#!/usr/bin/env python
+
+import kata_scrape
+kata_scrape.main()
