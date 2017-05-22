@@ -210,25 +210,29 @@ class Client:
 
             with open('{slug}/{v}.{ext}'.format(slug=self.slug, v=v, ext=self.language_ext), 'w+') as writer:
 
+                template_h = open(os.path.join(TEMPLATES, k, '{lang}.j2'.format(lang=self.language)),'r')
+
+
                 template = Template(
-                    open(os.path.join(TEMPLATES, k, '{lang}.j2'.format(lang=self.language)),'r').read()
+                    template_h.read()
                 )
 
+                template_h.close()
                 # special exception for javascript When the function is
                 # scraped we then need to identify its name so we can
                 # reference it in the tests
 
                 if k == 'fixture' and self.language == 'javascript':
-                    p = re.compile('function\s*(.*?)\(')
-                    m = p.match(self.code)
+                    p = re.compile('function\s+(.*?)\(')
+                    m = p.search(self.code)
 
                     try:
                         func_name = m.group(1)
                     except AttributeError:
                         # maybe the format is like this: var someFunc = function(args)
                         p2 = re.compile('(\w+)\s*=\s*function')
-                        m2 = p.match(self.code)
-                        func_name = m.group(1)
+                        m2 = p2.search(self.code)
+                        func_name = m2.group(1)
 
                     output = template.render({
                         'code': getattr(self, k),

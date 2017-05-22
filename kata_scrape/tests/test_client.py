@@ -149,12 +149,9 @@ class TestClient(unittest.TestCase):
 
         os.makedirs(c.slug)
 
-        expected_code_file = '"""\nThis has been commented out to protect from malicious code\n\n{code}\n"""\n'.format(
-    code=c.code
-)
-
-        print('')
-        print(expected_code_file)
+        expected_code_file = '"""\nThis has been commented out to protect from malicious code\n\n{code}\n"""'.format(
+            code=c.code
+        )
 
         expected_test_file = '''import sys
 sys.path.append('../test_utils/python')
@@ -162,25 +159,63 @@ import test_utils as test
 Test = test # this module is sometimes referenced with a capital T
 from main import *
 
-{code}
-
-'''.format(code=c.code)
+{code}'''.format(code=c.fixture)
 
         c._write_code()
 
         with(open('./{}/main.py'.format(c.slug), 'r')) as reader:
-            # print(reader.read())
-            contents = reader.read()
-            print(contents)
-            self.assertMultiLineEqual(expected_code_file, contents)
+            self.assertMultiLineEqual(expected_code_file, reader.read())
 
 
         with(open('./{}/tests.py'.format(c.slug), 'r')) as reader:
             self.assertMultiLineEqual(expected_test_file, reader.read())
 
+#     def test__write_code_js(self):
+#         c = client.Client({})
+#         c.slug = 'some-kata'
+#         c.fixture = 'a fixture'
+#         c.language = 'javascript'
+#         c.language_ext = 'js'
+#
+#         os.makedirs(c.slug)
+#
+#         c.code = 'function someFunc(args){\n\n}'
+#
+#         expected_test_file = """var Test = require('../test_utils/javascript/test_utils'),
+#   {func_name} = require('./main')
+#
+# {code}""".format(code=c.code, func_name='someFunc')
+#
+#         c._write_code()
+#
+#         with(open('./{}/tests.py'.format(c.slug), 'r')) as reader:
+#             self.assertMultiLineEqual(expected_test_file, reader.read())
 
     def test__write_code_js(self):
-        pass
+        c = client.Client({})
+        c.slug = 'some-kata'
+        c.fixture = 'a fixture'
+        c.language = 'javascript'
+        c.language_ext = 'js'
+
+        os.makedirs(c.slug)
+
+        functions = [
+            'var someFunc = function(args){\n}',
+            'function someFunc(args){\n}'
+        ]
+
+        for func_name in functions:
+            c.code = func_name
+            expected_test_file = """var Test = require('../test_utils/javascript/test_utils'),
+  {func_name} = require('./main')
+
+{code}""".format(code=c.fixture, func_name='someFunc')
+
+            c._write_code()
+
+            with(open('./{}/tests.js'.format(c.slug), 'r')) as reader:
+                self.assertMultiLineEqual(expected_test_file, reader.read())
 
 if __name__ == '__main__':
     unittest.main()
