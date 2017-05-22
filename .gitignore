@@ -4,56 +4,6 @@ katas
 *.pyc
 kata_scrape/__pycache__/__init__.cpython-36.pyc
 
-Skip to content
-This repository
-
-    Pull requests
-    Issues
-    Gist
-
-    @jstoebel
-
-2,041
-50,293
-
-    21,400
-
-github/gitignore
-Code
-Pull requests 139
-Projects 0
-Pulse
-Graphs
-gitignore/Python.gitignore
-cb129a1 8 days ago
-@scari scari Fixed typo
-@arcresu
-@Metallicow
-@shiftkey
-@misaelnieto
-@pmsosa
-@svkampen
-@vltr
-@matheussl
-@Lucretiel
-@hugovk
-@Harrison-G
-@ghisvail
-@EvandroLG
-@DSIW
-@toanant
-@Visgean
-@nvie
-@skuschel
-@sigo
-@scari
-@borntyping
-@roll
-@rolando
-@reinout
-@rayshan
-@relekang
-102 lines (80 sloc) 1.13 KB
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
