@@ -1,7 +1,7 @@
 secrets.json
 katas
 .DS_Store
-
+*.pyc
 
 Skip to content
 This repository

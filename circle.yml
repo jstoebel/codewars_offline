@@ -1,7 +1,11 @@
+machine:
+  python:
+    version: 3.6.0
+
 dependencies:
   override:
     - pip install -r ./kata_scrape/requirements.txt
 
 test:
   override:
-    - python 
+    - python ./kata_scrape/tets/test_client.py
