@@ -4,31 +4,31 @@ import sys
 import unittest
 from unittest.mock import MagicMock
 
-sys.path.insert(1, '..')
+TEST_ROOT = os.path.dirname((os.path.abspath(__file__)))
+sys.path.insert(1, os.path.join(TEST_ROOT, '..'))
 import client
 
 class TestClient(unittest.TestCase):
 
     def setUp(self):
-        self.test_root = os.getcwd()
         self.kata_setup()
-        os.chdir('katas')
+        os.chdir(os.path.join(TEST_ROOT, 'katas'))
 
     def kata_setup(self):
         # create a katas folder with a config file
 
-        os.makedirs('./katas')
+        os.makedirs(os.path.join(TEST_ROOT, 'katas'))
         copyfile(
-        'test_files/config.json',
-        'katas/config.json'
+            os.path.join(TEST_ROOT, 'test_files/config.json'),
+            os.path.join(TEST_ROOT, 'katas/config.json')
         )
 
     def tearDown(self):
         """
         remove the katas directory
         """
-        os.chdir(self.test_root)
-        rmtree('./katas')
+        os.chdir(TEST_ROOT)
+        rmtree(os.path.join(TEST_ROOT, 'katas'))
 
     def test__pick_lang(self):
         """

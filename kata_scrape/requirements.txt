@@ -1,7 +1,6 @@
 appdirs==1.4.3
 Jinja2==2.9.6
 MarkupSafe==1.0
-mypy==0.501
 packaging==16.8
 pyparsing==2.2.0
 requests==2.13.0

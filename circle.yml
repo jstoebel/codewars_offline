@@ -1,0 +1,7 @@
+dependencies:
+  override:
+    - pip install -r ./kata_scrape/requirements.txt
+
+test:
+  override:
+    - python 
