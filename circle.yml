@@ -8,4 +8,4 @@ dependencies:
 
 test:
   override:
-    - python ./kata_scrape/tets/test_client.py
+    - python ./kata_scrape/tests/test_client.py
