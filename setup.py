@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
       name='kata_scrape',
-      version='0.2',
+      version='0.2.1',
       summary='A simple client for scraping Codewars katas',
       description='A simple client for scraping Codewars katas',
       keywords=['codewars', 'code katas', 'selenium'],

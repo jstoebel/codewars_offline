@@ -15,7 +15,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import requests
 
-from settings import TEMPLATES
+from .settings import TEMPLATES
 
 class KataExistsError(Exception):
     pass
