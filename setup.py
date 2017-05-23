@@ -9,7 +9,7 @@ setup(
       url='https://github.com/jstoebel/kata_scrape',
       author='Jacob Stoebel',
       author_email='jstoebel@gmail.com',
-      maintainer='Jacob Stoebel'
+      maintainer='Jacob Stoebel',
       license='MIT',
       packages=['kata_scrape'],
       scripts=['bin/kata-scrape'],
