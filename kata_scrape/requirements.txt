@@ -1,5 +1,5 @@
 beautifulsoup4==4.6.0
 html2text==2016.9.19
 Jinja2==2.9.6
-requests==2.13.0
+requests==2.20.0
 selenium==3.4.1
